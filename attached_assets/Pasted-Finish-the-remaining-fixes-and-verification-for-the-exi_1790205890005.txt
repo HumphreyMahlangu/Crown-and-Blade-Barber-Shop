@@ -1,0 +1,142 @@
+Finish the remaining fixes and verification for the existing CROWN & BLADE website.
+
+Preserve the current design and working functionality. The promotion copy, popup dismissal, footer links, customer validation, detailed booking review, discount calculation, and normal availability filtering have already passed browser checks.
+
+Inspect the existing implementation first. Make targeted changes, reuse existing dependencies, and avoid unrelated refactoring or new features.
+
+1. FIX THE APPLE CALENDAR .ICS EXPORT
+
+A downloaded appointment file currently contains:
+
+DTSTART;TZID=Africa/Johannesburg:20260925T150000
+DTEND;TZID=Africa/Johannesburg:20260925T154500
+
+However, it contains no VTIMEZONE component.
+
+Fix this standards-compliance problem. Prefer exporting DTSTART and DTEND as UTC timestamps ending in Z, with no TZID parameter on those properties.
+
+For example:
+- 25 September 2026, 15:00 SAST must become:
+  DTSTART:20260925T130000Z
+- A 45-minute appointment must end at:
+  DTEND:20260925T134500Z
+
+These are test examples, not values to hard-code.
+
+Generate calendar content from the successfully saved booking. Ensure:
+- Date and time conversion uses Africa/Johannesburg explicitly, regardless of the customer’s device timezone.
+- Duration determines the correct end time.
+- UID is unique per booking and stable across repeated downloads.
+- DTSTAMP is a valid UTC timestamp.
+- SUMMARY, DESCRIPTION, and LOCATION carry the correct appointment information.
+- Description includes service, barber, and booking reference.
+- Text escaping handles backslashes, commas, semicolons, and newlines correctly.
+- Lines use CRLF endings.
+- Long lines are folded correctly according to RFC 5545’s 75-octet recommendation.
+- The file uses a suitable .ics filename and text/calendar MIME type.
+
+Validate generated files with an independent calendar parser if available. Test at least two different appointments, using synthetic development fixtures rather than additional production bookings.
+
+2. VERIFY GOOGLE CALENDAR
+
+The existing Google Calendar link contains the correct appointment details, but the external review could not verify the signed-in event screen.
+
+Treat this as an unverified behaviour, not proof the feature is broken.
+
+Check that the generated event link includes:
+- Correct title, service, barber, reference, and location.
+- Correct selected date and start/end times.
+- Explicit and consistent timezone handling.
+- Proper URL encoding.
+
+Use a supported Google Calendar event-creation URL. Check signed-in and signed-out behaviour where the available testing environment allows it.
+
+Do not add OAuth, request calendar API keys, or rebuild the integration unnecessarily.
+
+Do not save test events to someone’s personal calendar. If testing requires an interactive Google login or an Apple device, report the precise manual check still required. Never claim these checks passed without performing them.
+
+3. VERIFY BACKEND BOOKING INTEGRITY
+
+Normal availability filtering works, including overlaps between different service durations. Verify that the backend also enforces these rules atomically.
+
+In a development/test database:
+- Send two concurrent requests for the same barber and overlapping appointment times.
+- Confirm exactly one succeeds and the other returns a useful conflict response.
+- Test overlaps involving different service durations.
+- Confirm adjacent, non-overlapping appointments are allowed.
+- Confirm different barbers can work at the same time.
+- Confirm past times, Sundays, and appointments ending after closing are rejected server-side.
+- Verify retries or repeated submissions cannot create duplicate reservations.
+
+If protection is missing, implement the smallest reliable database/server-side fix. Do not rely only on disabling the booking button or checking availability before inserting.
+
+Show a clear recovery message when a slot has just been taken, preserve customer input, and refresh availability.
+
+4. VERIFY CUSTOMER DATA PRIVACY
+
+Inspect public API routes and database access rules.
+
+Verify that unauthenticated visitors cannot list or retrieve other customers’:
+- Names.
+- Email addresses.
+- Phone numbers.
+- Notes.
+- Contact messages.
+- Private booking records.
+
+Availability responses should expose only information necessary for selecting appointments.
+
+Keep credentials and database secrets on the server. Fix any actual exposure found without introducing mandatory customer accounts.
+
+Use synthetic development records for these tests. Do not enumerate real customer data.
+
+5. VERIFY THE CONTACT FORM
+
+Test the contact form in the development environment.
+
+Confirm:
+- Appropriate frontend and backend validation.
+- A valid submission is actually persisted.
+- Success appears only after persistence succeeds.
+- Failed requests show a useful error and preserve the message.
+- Duplicate clicks are handled.
+- Stored messages are not publicly readable.
+- The interface does not claim an email was sent unless delivery is configured and verified.
+
+Do not send real emails or create production contact messages during testing.
+
+6. CLEAN UP THE EXISTING AUTHORISED TEST BOOKING
+
+One production test reservation was created during the review:
+
+Reference: CB-20260925-D5BAE2
+Name: Assessment Test Booking
+Email: assessment-test@example.com
+Barber: Mandla Ndlovu
+Service: Skin Fade
+Date: 25 September 2026
+Time: 15:00–15:45 SAST
+Total: R198
+Notes begin: AUTHORISED WEBSITE TEST ONLY.
+
+Locate and verify this exact record before changing it. Cancel it through the existing cancellation mechanism if available; otherwise remove only this matching test record.
+
+Do not delete other bookings or reset the database. Confirm the appointment slot becomes available again. If production data access is unavailable, report that cleanup remains outstanding.
+
+7. FINAL VERIFICATION
+
+Run focused regression checks for the changes made, then the complete customer journey:
+Home → Services → Booking → Review → Confirmation → Calendar actions.
+
+Use development data for additional bookings.
+
+Keep the existing footer sharing actions clearly labelled as sharing, not business social profiles. Do not invent social accounts.
+
+Finish with a concise report:
+- Actual defects found and fixed.
+- Tests executed and their results.
+- Anything still requiring manual verification.
+- Whether the identified production test booking was removed.
+- Whether republishing is required.
+
+Clearly distinguish “implemented”, “tested”, and “not verified”. Leave the project ready to republish.
