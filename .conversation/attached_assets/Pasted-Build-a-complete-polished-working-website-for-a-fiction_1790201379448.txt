@@ -1,0 +1,234 @@
+Build a complete, polished, working website for a fictional South African barber shop called “CROWN & BLADE”.
+
+This is a Junior Full-Stack Developer practical assessment. The finished product must be publicly deployable and feel like a professional website created for a real client.
+
+Implement the website and its functionality. Do not stop at a plan or a visual prototype. Work through the requirements below and test the result.
+
+PROJECT PRIORITIES
+
+1. A distinctive, professional design.
+2. A complete booking experience with bookings saved in a database.
+3. Working Google Calendar and Apple Calendar-compatible appointment export.
+4. Excellent mobile usability.
+5. Complete content and working interactions throughout.
+
+Use Lovable Cloud for the backend and database if available. If enabling it requires my approval, ask for it. Do not silently replace database persistence with localStorage or display a successful booking when nothing was saved.
+
+BRAND AND ART DIRECTION
+
+Brand: CROWN & BLADE
+Tagline: “Precision cuts. Quiet confidence.”
+Concept: A contemporary neighbourhood barber shop in Cape Town, South Africa.
+Currency: South African rand (ZAR).
+Business timezone: Africa/Johannesburg.
+
+Create a refined editorial style with:
+- Warm ivory backgrounds, near-black text, muted bronze accents, and occasional dark sections.
+- Expressive serif headings paired with highly readable sans-serif body text.
+- Large, carefully cropped barber-shop photography.
+- Generous spacing, strong typography, subtle borders, and restrained animation.
+- A clean wordmark with an original, simple crown-and-blade SVG emblem.
+- A consistent favicon and brand identity.
+
+The design should feel premium but welcoming. Avoid generic SaaS layouts, excessive rounded cards, purple gradients, decorative dashboards, and excessive animation.
+
+Use high-quality, relevant, legally usable imagery. Ensure all images load, have useful alt text, and preserve their proportions. Keep text readable over photographs.
+
+Write finished, natural content. Do not use lorem ipsum, fabricated customer reviews, fake awards, or unsupported claims about years in business.
+
+This is a fictional assessment business. Use appropriate fictional business information without impersonating an existing shop. State discreetly in the footer that it is a fictional business created for a practical assessment.
+
+PAGES AND NAVIGATION
+
+Create separate working routes:
+- / — Home
+- /services — Services
+- /about — About
+- /contact — Contact
+- /booking — Booking
+- /terms — Terms & Conditions
+- /privacy — Privacy
+
+Include a branded header with working navigation, an obvious Book Now button, and an accessible mobile menu.
+
+Create a complete footer containing navigation, business information, opening hours, booking and legal links, and the current copyright year.
+
+Do not use dead “#” links. Do not invent social profiles. Include working, clearly labelled social sharing actions where appropriate instead of pretending the fictional shop has established social accounts.
+
+HOME
+
+Include:
+- A striking photographic hero, the tagline, short supporting copy, and Book Your Cut / Explore Services actions.
+- A concise introduction to the shop.
+- Featured services with prices and durations.
+- Barber introductions.
+- A visual section communicating the atmosphere and approach.
+- Opening hours and location information.
+- A strong final booking call to action.
+
+SERVICES
+
+Use this initial service catalogue consistently across the website and database:
+
+- Classic Cut — R180 — 30 minutes
+- Skin Fade — R220 — 45 minutes
+- Beard Sculpt — R120 — 20 minutes
+- Cut & Beard — R280 — 60 minutes
+- Kids’ Cut — R140 — 30 minutes
+- Signature Grooming — R350 — 75 minutes
+
+Give each service a clear description and a Book This Service button that preselects it in the booking flow.
+
+ABOUT
+
+Create a believable fictional brand story and three fictional barber profiles with names, specialties, short biographies, and appropriate imagery.
+
+Keep barber identities consistent throughout the site and booking system.
+
+CONTACT
+
+Include consistent business information, opening hours, location details, and clear directions to booking.
+
+Opening hours:
+- Monday–Friday: 09:00–18:00
+- Saturday: 08:00–16:00
+- Sunday: Closed
+
+Do not imply that a real unrelated address or telephone number belongs to this fictional business.
+
+Include a working contact form with name, email, and message. Validate it and save submissions privately in the database. Show success only after a successful save. Do not claim an email was sent unless email delivery is actually configured.
+
+BOOKING EXPERIENCE
+
+Build an easy-to-follow flow:
+
+1. Select service.
+2. Select barber.
+3. Select date and available time.
+4. Enter customer details.
+5. Review and confirm.
+6. Show booking confirmation and calendar actions.
+
+Requirements:
+- Collect customer name, email, and phone number.
+- Make appointment notes optional.
+- Allow customers to go back and change their choices without losing other entered information.
+- Show a clear summary of service, barber, price, duration, date, and time.
+- Do not require customer registration or login.
+- Use appropriate input types, field labels, and helpful validation.
+- Show loading, error, empty, and success states.
+- Prevent repeated clicks from creating duplicate bookings.
+- Generate a unique booking reference.
+
+AVAILABILITY AND PERSISTENCE
+
+Use database-backed services, barbers, and appointments.
+
+Generate available appointment times from opening hours, the selected service duration, the selected barber, and existing bookings.
+
+Enforce these rules on the backend as well as the frontend:
+- No dates or times in the past.
+- No Sunday bookings.
+- No appointments outside opening hours.
+- The full service duration must fit before closing.
+- No overlapping appointments for the same barber, including overlaps between services of different durations.
+- Two customers attempting to reserve the same slot must not both succeed.
+- If a slot becomes unavailable, explain what happened and let the customer select another.
+
+Use an atomic server-side booking operation or database constraint to prevent booking races.
+
+Store only necessary customer information. Public visitors must not be able to read other customers’ names, emails, phone numbers, notes, or contact messages. Availability responses should expose available times, not private booking records.
+
+Keep secrets out of frontend code. Apply suitable database access policies.
+
+CALENDAR INTEGRATION — ESSENTIAL
+
+On the successful booking confirmation screen, provide:
+
+1. Add to Google Calendar.
+2. Download for Apple Calendar (.ics).
+
+Both must use the confirmed, saved booking details:
+- CROWN & BLADE.
+- Selected service.
+- Selected barber.
+- Selected appointment date.
+- Correct start time.
+- End time calculated from the service duration.
+- Location information.
+- Booking reference and useful appointment details.
+
+Implement Google Calendar using a correctly encoded event-creation link.
+
+Generate a valid .ics file for Apple Calendar and other compatible calendar applications. Include a unique UID, DTSTAMP, DTSTART, DTEND, SUMMARY, DESCRIPTION, and LOCATION. Properly escape text and use valid calendar formatting.
+
+Handle Africa/Johannesburg correctly. An appointment selected for 15:00 South African time must represent that same instant in both calendar exports. Do not accidentally shift it through incorrect UTC conversion.
+
+Do not hard-code one appointment for every customer.
+
+Do not require Google OAuth or a calendar API key merely to create an event link or download an .ics file.
+
+Explain accurately that the customer must complete the calendar action in their calendar app. Opening a link or downloading a file does not prove an event was saved to their calendar.
+
+PURPOSEFUL MODAL
+
+Include a tasteful first-visit offer modal for 10% off with code FIRSTCUT10.
+
+- Make it available through a visible “First visit?” action.
+- If shown automatically, show it only once per browsing session.
+- Provide an obvious close button and Escape-key support.
+- Manage keyboard focus properly.
+- Do not reopen it repeatedly or interrupt an active booking.
+- Make the offer functional: applying the code updates the booking summary, and the backend validates and records the discount.
+- Clearly state any offer conditions and round monetary amounts correctly.
+
+LEGAL CONTENT
+
+Write complete, readable Terms & Conditions relevant to the fictional shop and the implemented booking experience. Cover appointments, lateness, cancellations, no-shows, pricing, the promotional offer, and contact arrangements.
+
+Create a Privacy page that accurately describes the customer information collected, why it is used, and how privacy enquiries can be made.
+
+Do not claim unimplemented features, automatic refunds, payments, email delivery, certifications, or guaranteed legal compliance.
+
+Do not add online payments, subscriptions, customer accounts, or an admin dashboard. Keep the project focused on the assessment.
+
+RESPONSIVENESS AND ACCESSIBILITY
+
+Make every page work well on mobile, tablet, and desktop.
+
+Check:
+- No horizontal overflow.
+- Comfortable touch targets.
+- Usable navigation and booking controls on narrow screens.
+- Visible keyboard focus.
+- Proper form labels and accessible validation.
+- Semantic headings and sufficient colour contrast.
+- Reduced-motion preferences.
+- Responsive, efficiently loaded images.
+- A working 404 page.
+
+Provide appropriate page titles, descriptions, and a favicon. Keep development messages, debug information, and unfinished placeholders out of the website.
+
+TESTING AND COMPLETION
+
+Use available browser and testing tools to verify the implemented experience.
+
+Test:
+- Home → Services → Book This Service → select barber/date/time → enter details → confirm → calendar actions.
+- Bookings actually persist after refresh.
+- Service preselection works.
+- Different bookings produce different, correct calendar details.
+- A 15:00 South African appointment has the correct instant and duration in both calendar exports.
+- Invalid input and failed requests show useful errors.
+- Double-booking and overlapping appointments are prevented.
+- Past times, closed days, and appointments that finish after closing are rejected.
+- The promotion updates and saves the correct price.
+- Contact form submissions persist privately.
+- Modal closing, keyboard use, mobile navigation, footer links, and legal routes work.
+- Representative mobile, tablet, and desktop widths.
+- Direct navigation and refresh on every route.
+- No broken images, obvious console errors, or dead buttons.
+
+Correct problems found during testing. Do not describe untested functionality as verified.
+
+Leave the project ready for public publishing. In your final project-chat response, briefly state what was built, what was tested, and any remaining setup required. Keep that implementation report out of the customer-facing website.

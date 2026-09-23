@@ -1,6 +1,6 @@
-# [Project name]
+# CROWN & BLADE
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+CROWN & BLADE is a Cape Town barber shop website with a database-backed booking flow and calendar exports.
 
 ## Run & Operate
 
@@ -22,23 +22,30 @@ _Replace the heading above with the project's name, and this line with one sente
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `artifacts/crown-blade/` — customer-facing React site and brand styling.
+- `artifacts/api-server/src/routes/barbershop.ts` — catalogue, availability, booking, promotion, and contact endpoints.
+- `lib/api-spec/openapi.yaml` — source of truth for API contracts.
+- `lib/db/src/schema/barbershop.ts` — PostgreSQL schema for services, barbers, bookings, and private contact messages.
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- Appointment dates and times are stored as local calendar values for Africa/Johannesburg, avoiding accidental date shifts in exports.
+- Booking writes take a PostgreSQL advisory transaction lock per barber/day before overlap checks, preventing double-booking races.
+- Calendar actions are client-side exports: Google Calendar uses an encoded event link and Apple Calendar uses an escaped `.ics` download.
+- Customer records are write-only from the public API; availability returns times without exposing booking details.
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+Customers can explore services and barbers, submit a private enquiry, book without an account, apply the FIRSTCUT10 first-visit offer, and add a saved appointment to Google Calendar or Apple Calendar.
 
 ## User preferences
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
+The requested brand direction is warm, editorial, premium but welcoming, with clear mobile usability and no fabricated social proof.
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- Run API codegen after changing `lib/api-spec/openapi.yaml`.
+- The web build expects workflow-provided `PORT` and `BASE_PATH`; typecheck is the portable local check.
 
 ## Pointers
 

@@ -1,0 +1,1 @@
+- [Generated client typings](client-dom-iterable.md) — include DOM iterable types when generated fetch helpers use Headers.entries.
