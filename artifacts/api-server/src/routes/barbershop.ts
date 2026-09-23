@@ -233,7 +233,7 @@ router.post("/promotions/validate", async (req, res): Promise<void> => {
       valid: true,
       code: PROMOTION_CODE,
       discountPercent: PROMOTION_PERCENT,
-      message: "10% off has been applied to this booking.",
+      message: "First-visit offer: 10% off has been applied to this booking.",
     }),
   );
 });
@@ -241,7 +241,14 @@ router.post("/promotions/validate", async (req, res): Promise<void> => {
 router.post("/bookings", async (req, res): Promise<void> => {
   const parsed = CreateBookingBody.safeParse(normaliseBookingBody(req.body));
   if (!parsed.success) {
-    res.status(400).json({ error: "Please check your booking details and try again." });
+    const issue = parsed.error.issues[0];
+    const field = issue?.path[0];
+    const fieldMessages: Record<string, string> = {
+      customerName: "Enter your name.",
+      customerEmail: "Enter a valid email address.",
+      customerPhone: "Enter a valid South African phone number, for example 082 123 4567 or +27 82 123 4567.",
+    };
+    res.status(400).json({ error: fieldMessages[String(field)] ?? "Please check your booking details and try again." });
     return;
   }
   const input = parsed.data;

@@ -97,6 +97,11 @@ function Shell({ children }: { children: ReactNode }) {
   const [location] = useLocation();
   const [offer, setOffer] = useState(false);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const previouslyFocusedRef = useRef<HTMLElement | null>(null);
+  const dismiss = () => {
+    sessionStorage.setItem('cb-offer-seen', '1');
+    setOffer(false);
+  };
   useEffect(() => {
     if (location === '/booking' || sessionStorage.getItem('cb-offer-seen')) return undefined;
     const t = window.setTimeout(() => setOffer(true), 900);
@@ -104,14 +109,35 @@ function Shell({ children }: { children: ReactNode }) {
   }, [location]);
   useEffect(() => {
     if (!offer) return undefined;
+    previouslyFocusedRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     closeButtonRef.current?.focus();
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') dismiss();
+      if (event.key === 'Escape') {
+        dismiss();
+        return;
+      }
+      if (event.key !== 'Tab') return;
+      const modal = closeButtonRef.current?.closest('.offer-modal');
+      const focusable = modal?.querySelectorAll<HTMLElement>(
+        'button, a[href], input, textarea, select, [tabindex]:not([tabindex="-1"])',
+      );
+      if (!focusable?.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
     };
     window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      if (previouslyFocusedRef.current?.isConnected) previouslyFocusedRef.current.focus();
+    };
   }, [offer]);
-  const dismiss = () => { sessionStorage.setItem('cb-offer-seen', '1'); setOffer(false); };
   return <div className="site-shell"><Header onOffer={() => setOffer(true)} />{children}<Footer />{offer && <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="offer-title"><div className="offer-modal"><button ref={closeButtonRef} className="close" onClick={dismiss} aria-label="Close offer" data-testid="button-close-offer">×</button><div className="eyebrow">A little welcome</div><h2 id="offer-title">Your first cut,<br /><em>10% off.</em></h2><p className="body-large">Save 10% on your first visit when you book with code FIRSTCUT10.</p><p className="offer-code">FIRSTCUT10 · 10% OFF</p><div style={{ marginTop: 28 }}><Link href="/booking" className="btn btn-dark" onClick={dismiss} data-testid="link-offer-book">Book with FIRSTCUT10 <ArrowRight size={14} /></Link></div></div></div>}</div>;
 }
 
@@ -191,6 +217,7 @@ function Booking() {
     setStep((current) => Math.min(4, current + 1));
   };
   const validateCode = () => {
+    setPromoPercent(0);
     if (!promotionCode.trim()) { setPromoMessage('Enter a code first.'); return; }
     promotion.mutate({ data: { code: promotionCode.trim() } }, { onSuccess: (result) => { setPromoPercent(result.valid ? result.discountPercent : 0); setPromoMessage(result.message); }, onError: () => setPromoMessage('We couldn’t validate that code right now.') });
   };
@@ -198,7 +225,13 @@ function Booking() {
     if (!chosenService || !chosenBarber) return;
     if (booking.isPending) return;
     setFormError('');
-    booking.mutate({ data: { serviceId: chosenService.id, barberId: chosenBarber.id, date, time, customerName: customerName.trim(), customerEmail: customerEmail.trim(), customerPhone: normalisePhone(customerPhone), notes: notes.trim() || null, promotionCode: promotionCode.trim() || null } }, { onSuccess: (result) => { setConfirmation(result as Confirmation); setStep(5); }, onError: (error) => setFormError(apiErrorMessage(error, 'That time may have just been taken. Please choose another and try again.')) });
+    booking.mutate({ data: { serviceId: chosenService.id, barberId: chosenBarber.id, date, time, customerName: customerName.trim(), customerEmail: customerEmail.trim(), customerPhone: normalisePhone(customerPhone), notes: notes.trim() || null, promotionCode: promotionCode.trim() || null } }, { onSuccess: (result) => { setConfirmation(result as Confirmation); setStep(5); }, onError: (error) => {
+      const message = apiErrorMessage(error, 'That time may have just been taken. Please choose another and try again.');
+      setFormError(message);
+      if (/phone/i.test(message)) setFieldErrors((current) => ({ ...current, phone: message }));
+      if (/email/i.test(message)) setFieldErrors((current) => ({ ...current, email: message }));
+      if (/name/i.test(message)) setFieldErrors((current) => ({ ...current, name: message }));
+    } });
   };
   const addToAppleCalendar = () => {
     if (!confirmation) return;
@@ -220,7 +253,7 @@ Total: R ${confirmation.total}`);
       {step === 1 && <div className="field-grid"><div className="field full"><label>Service</label><div className="option-grid">{services.map((service) => <button type="button" className={`option ${service.id === serviceId ? 'selected' : ''}`} onClick={() => setServiceId(service.id)} key={service.id} data-testid={`button-booking-service-${service.id}`}><strong>{service.name}</strong><small>{money(service.price)} · {service.durationMinutes} min</small></button>)}</div></div><div className="field full"><label>Barber</label><div className="option-grid">{barbers.map((barber) => <button type="button" className={`option ${barber.id === barberId ? 'selected' : ''}`} onClick={() => setBarberId(barber.id)} key={barber.id} data-testid={`button-booking-barber-${barber.id}`}><strong>{barber.name}</strong><small>{barber.specialty}</small></button>)}</div></div><div className="field"><label htmlFor="booking-date">Date</label><input id="booking-date" type="date" min={new Date().toISOString().slice(0, 10)} value={date} onChange={(event) => { setDate(event.target.value); setTime(''); }} data-testid="input-booking-date" /></div></div>}
       {step === 2 && <><div className="notice"><CalendarDays size={15} style={{ verticalAlign: 'middle', marginRight: 8 }} />{chosenService?.name} with {chosenBarber?.name} on {new Date(`${date}T12:00:00`).toLocaleDateString('en-ZA', { weekday: 'long', day: 'numeric', month: 'long' })}</div>{availability.isLoading ? <div className="loading-block"><div className="skeleton" style={{ width: '70%' }} /></div> : availability.isError ? <div className="notice">We couldn’t check the chairs. Try another date.</div> : availableTimes.length === 0 ? <div className="notice">The shop is closed or fully booked on this day. Go back and choose another.</div> : <div className="time-grid">{availableTimes.map((slot) => <button type="button" className={`option ${slot === time ? 'selected' : ''}`} onClick={() => setTime(slot)} key={slot} data-testid={`button-time-${slot}`}><strong>{slot}</strong></button>)}</div>}</>}
        {step === 3 && <div className="field-grid"><div className="field full"><label htmlFor="booking-name">Full name</label><input id="booking-name" value={customerName} onChange={(event) => { setCustomerName(event.target.value); setFieldErrors((current) => ({ ...current, name: undefined })); }} aria-invalid={Boolean(fieldErrors.name)} aria-describedby={fieldErrors.name ? 'booking-name-error' : undefined} autoComplete="name" data-testid="input-booking-name" />{fieldErrors.name && <span className="field-error" id="booking-name-error" role="alert">{fieldErrors.name}</span>}</div><div className="field"><label htmlFor="booking-email">Email</label><input id="booking-email" type="email" value={customerEmail} onChange={(event) => { setCustomerEmail(event.target.value); setFieldErrors((current) => ({ ...current, email: undefined })); }} aria-invalid={Boolean(fieldErrors.email)} aria-describedby={fieldErrors.email ? 'booking-email-error' : undefined} autoComplete="email" data-testid="input-booking-email" />{fieldErrors.email && <span className="field-error" id="booking-email-error" role="alert">{fieldErrors.email}</span>}</div><div className="field"><label htmlFor="booking-phone">Phone</label><input id="booking-phone" type="tel" value={customerPhone} onChange={(event) => { setCustomerPhone(event.target.value); setFieldErrors((current) => ({ ...current, phone: undefined })); }} aria-invalid={Boolean(fieldErrors.phone)} aria-describedby={fieldErrors.phone ? 'booking-phone-error' : undefined} autoComplete="tel" placeholder="082 123 4567" data-testid="input-booking-phone" />{fieldErrors.phone && <span className="field-error" id="booking-phone-error" role="alert">{fieldErrors.phone}</span>}</div><div className="field full"><label htmlFor="booking-notes">Anything we should know? <span className="muted">(optional)</span></label><textarea id="booking-notes" value={notes} onChange={(event) => setNotes(event.target.value)} data-testid="input-booking-notes" /></div></div>}
-       {step === 4 && <><div className="review-details"><div className="review-section"><div className="mono review-label">Your details</div><div className="review-line"><span>Name</span><strong>{customerName}</strong></div><div className="review-line"><span>Email</span><strong>{customerEmail}</strong></div><div className="review-line"><span>Phone</span><strong>{normalisePhone(customerPhone)}</strong></div>{notes.trim() && <div className="review-line review-notes"><span>Notes</span><strong>{notes.trim()}</strong></div>}</div><div className="review-section"><div className="mono review-label">Appointment</div><div className="review-line"><span>Service</span><strong>{chosenService?.name} · {chosenService?.durationMinutes} min</strong></div><div className="review-line"><span>Barber</span><strong>{chosenBarber?.name}</strong></div><div className="review-line"><span>When</span><strong>{new Date(`${date}T12:00:00`).toLocaleDateString('en-ZA', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })} · {time}–{chosenService ? timeFromMinutes(time, chosenService.durationMinutes) : time}</strong></div><div className="review-line"><span>Timezone</span><strong>South African Standard Time (SAST)</strong></div></div></div><div className="field" style={{ maxWidth: 410 }}><label htmlFor="promotion-code">Promotion code</label><div style={{ display: 'flex', gap: 8 }}><input id="promotion-code" value={promotionCode} onChange={(event) => setPromotionCode(event.target.value.toUpperCase())} placeholder="FIRSTCUT10" data-testid="input-promotion-code" /><button className="btn btn-line" type="button" onClick={validateCode} disabled={promotion.isPending} data-testid="button-validate-promotion">{promotion.isPending ? 'Checking…' : 'Apply'}</button></div>{promoMessage && <span className={promoPercent ? '' : 'error-note'} style={promoPercent ? { color: 'hsl(var(--accent))', fontSize: '.76rem' } : undefined}>{promoMessage}</span>}</div><div className="summary"><div className="summary-line"><span>Original price</span><span>{money(chosenService?.price ?? 0)}</span></div>{promoPercent > 0 && <div className="summary-line" style={{ color: 'hsl(var(--accent))' }}><span>First visit · {promoPercent}% off</span><span>− {money(discount)}</span></div>}<div className="summary-line total"><span>Final total</span><span>{money((chosenService?.price ?? 0) - discount)}</span></div></div></>}
+       {step === 4 && <><div className="review-details"><div className="review-section"><div className="mono review-label">Your details</div><div className="review-line"><span>Name</span><strong>{customerName}</strong></div><div className="review-line"><span>Email</span><strong>{customerEmail}</strong></div><div className="review-line"><span>Phone</span><strong>{normalisePhone(customerPhone)}</strong></div>{notes.trim() && <div className="review-line review-notes"><span>Notes</span><strong>{notes.trim()}</strong></div>}</div><div className="review-section"><div className="mono review-label">Appointment</div><div className="review-line"><span>Service</span><strong>{chosenService?.name}</strong></div><div className="review-line"><span>Barber</span><strong>{chosenBarber?.name}</strong></div><div className="review-line"><span>Date</span><strong>{new Date(`${date}T12:00:00`).toLocaleDateString('en-ZA', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</strong></div><div className="review-line"><span>Start time</span><strong>{time}</strong></div><div className="review-line"><span>End time</span><strong>{chosenService ? timeFromMinutes(time, chosenService.durationMinutes) : time}</strong></div><div className="review-line"><span>Duration</span><strong>{chosenService?.durationMinutes} minutes</strong></div><div className="review-line"><span>Timezone</span><strong>South African Standard Time (SAST)</strong></div></div></div><div className="field" style={{ maxWidth: 410 }}><label htmlFor="promotion-code">Promotion code</label><div style={{ display: 'flex', gap: 8 }}><input id="promotion-code" value={promotionCode} onChange={(event) => { setPromotionCode(event.target.value.toUpperCase()); setPromoPercent(0); setPromoMessage(''); }} placeholder="FIRSTCUT10" data-testid="input-promotion-code" /><button className="btn btn-line" type="button" onClick={validateCode} disabled={promotion.isPending} data-testid="button-validate-promotion">{promotion.isPending ? 'Checking…' : 'Apply'}</button></div>{promoMessage && <span className={promoPercent ? '' : 'error-note'} style={promoPercent ? { color: 'hsl(var(--accent))', fontSize: '.76rem' } : undefined}>{promoMessage}</span>}</div><div className="summary"><div className="summary-line"><span>Original price</span><span>{money(chosenService?.price ?? 0)}</span></div>{promoPercent > 0 && <div className="summary-line" style={{ color: 'hsl(var(--accent))' }}><span>First visit · {promoPercent}% off</span><span>− {money(discount)}</span></div>}<div className="summary-line total"><span>Final total</span><span>{money((chosenService?.price ?? 0) - discount)}</span></div></div></>}
       {formError && <p className="error-note" role="alert">{formError}</p>}
       <div className="form-actions">{step > 1 && <button className="btn btn-line" type="button" onClick={() => setStep((current) => current - 1)} data-testid="button-booking-back"><ChevronLeft size={14} /> Back</button>}<span />{step < 4 && <button className="btn btn-dark" type="button" onClick={goNext} data-testid="button-booking-next">Continue <ChevronRight size={14} /></button>}{step === 4 && <button className="btn btn-bronze" type="button" onClick={submitBooking} disabled={booking.isPending} data-testid="button-confirm-booking">{booking.isPending ? 'Reserving…' : 'Reserve chair'} <Check size={14} /></button>}</div>
     </>}
