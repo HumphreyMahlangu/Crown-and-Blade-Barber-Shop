@@ -107,6 +107,15 @@ function normaliseBookingBody(body: unknown): unknown {
   return candidate;
 }
 
+function normaliseContactBody(body: unknown): unknown {
+  if (!body || typeof body !== "object") return body;
+  const candidate = { ...(body as Record<string, unknown>) };
+  for (const key of ["name", "email", "message"]) {
+    if (typeof candidate[key] === "string") candidate[key] = candidate[key].trim();
+  }
+  return candidate;
+}
+
 function toPublicService(service: typeof servicesTable.$inferSelect) {
   return {
     id: service.id,
@@ -354,7 +363,7 @@ router.post("/bookings", async (req, res): Promise<void> => {
 });
 
 router.post("/contact", async (req, res): Promise<void> => {
-  const parsed = SubmitContactBody.safeParse(req.body);
+  const parsed = SubmitContactBody.safeParse(normaliseContactBody(req.body));
   if (!parsed.success) {
     res.status(400).json({ error: "Please check your name, email and message." });
     return;

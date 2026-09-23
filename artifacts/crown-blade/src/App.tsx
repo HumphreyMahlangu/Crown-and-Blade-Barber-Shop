@@ -5,6 +5,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { useCreateBooking, useGetAvailability, useListBarbers, useListServices, useSubmitContact, useValidatePromotion, getGetAvailabilityQueryKey } from '@workspace/api-client-react';
 import { ArrowRight, CalendarDays, Check, ChevronLeft, ChevronRight, Clock3, Menu, X } from 'lucide-react';
+import { buildAppleCalendarIcs, buildGoogleCalendarUrl } from '@/calendar';
 import {
   Link,
   Route,
@@ -165,7 +166,7 @@ function Contact() {
   const submit = useSubmitContact();
   const [sent, setSent] = useState(false);
   const [error, setError] = useState('');
-  const onSubmit = (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); setError(''); const form = new FormData(event.currentTarget); submit.mutate({ data: { name: String(form.get('name')), email: String(form.get('email')), message: String(form.get('message')) } }, { onSuccess: () => { setSent(true); }, onError: () => setError('Something got in the way. Please try again.') }); };
+  const onSubmit = (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); if (submit.isPending || sent) return; setError(''); const form = new FormData(event.currentTarget); submit.mutate({ data: { name: String(form.get('name')), email: String(form.get('email')), message: String(form.get('message')) } }, { onSuccess: () => { setSent(true); }, onError: () => setError('Something got in the way. Please try again.') }); };
   return <><Meta title="Private enquiry" description="Send a private enquiry to CROWN & BLADE." /><main><PageHero eyebrow="Get in touch" title={<>A line<br /><em>between us.</em></>}><p className="body-large muted">Questions about a service, a group booking, or just want to say hello? We read every message.</p></PageHero><section className="page-section container"><div className="contact-grid"><div><h2>Come by<br /><em>soon.</em></h2><div className="contact-detail"><b>Address</b><span>17 Bree Street<br />Cape Town, 8001<br /><small>Fictional assessment location</small></span></div><div className="contact-detail"><b>Hours</b><span>Monday–Friday · 09:00–18:00<br />Saturday · 08:00–16:00<br />Sunday · Closed</span></div><div className="contact-detail"><b>Booking</b><span>Choose a service and time<br />on our booking page.</span></div></div><div className="form-card">{sent ? <div className="confirmation"><div className="check"><Check /></div><div className="eyebrow" style={{ justifyContent: 'center' }}>Message received</div><h3>Thanks for<br /><em>getting in touch.</em></h3><p className="muted">We’ve received your message and will review it during shop hours.</p><button className="btn btn-line" onClick={() => setSent(false)} data-testid="button-send-another">Send another enquiry</button></div> : <form onSubmit={onSubmit}><h3>Private<br /><em>enquiry.</em></h3><div className="field-grid"><div className="field"><label htmlFor="contact-name">Name</label><input id="contact-name" name="name" required minLength={2} data-testid="input-contact-name" /></div><div className="field"><label htmlFor="contact-email">Email</label><input id="contact-email" name="email" type="email" required data-testid="input-contact-email" /></div><div className="field full"><label htmlFor="contact-message">How can we help?</label><textarea id="contact-message" name="message" required minLength={10} data-testid="input-contact-message" /></div></div>{error && <p className="error-note" role="alert">{error}</p>}<button className="btn btn-dark" style={{ marginTop: 25 }} type="submit" disabled={submit.isPending} data-testid="button-submit-contact">{submit.isPending ? 'Sending…' : 'Send enquiry'} <ArrowRight size={14} /></button></form>}</div></div></section></main></>;
 }
 
@@ -228,6 +229,7 @@ function Booking() {
     booking.mutate({ data: { serviceId: chosenService.id, barberId: chosenBarber.id, date, time, customerName: customerName.trim(), customerEmail: customerEmail.trim(), customerPhone: normalisePhone(customerPhone), notes: notes.trim() || null, promotionCode: promotionCode.trim() || null } }, { onSuccess: (result) => { setConfirmation(result as Confirmation); setStep(5); }, onError: (error) => {
       const message = apiErrorMessage(error, 'That time may have just been taken. Please choose another and try again.');
       setFormError(message);
+      void queryClient.invalidateQueries({ queryKey: getGetAvailabilityQueryKey(availabilityParams) });
       if (/phone/i.test(message)) setFieldErrors((current) => ({ ...current, phone: message }));
       if (/email/i.test(message)) setFieldErrors((current) => ({ ...current, email: message }));
       if (/name/i.test(message)) setFieldErrors((current) => ({ ...current, name: message }));
@@ -235,19 +237,11 @@ function Booking() {
   };
   const addToAppleCalendar = () => {
     if (!confirmation) return;
-    const start = `${confirmation.date.replaceAll('-', '')}T${confirmation.time.replace(':', '')}00`;
-    const end = `${confirmation.date.replaceAll('-', '')}T${confirmation.endTime.replace(':', '')}00`;
-    const escapeIcs = (value: string) => value.replaceAll('\\', '\\\\').replaceAll('\n', '\\n').replaceAll(';', '\\;').replaceAll(',', '\\,');
-    const stamp = new Date().toISOString().replaceAll('-', '').replaceAll(':', '').replace(/\.\d{3}Z$/, 'Z');
-    const description = escapeIcs(`Service: ${confirmation.service.name}
-Barber: ${confirmation.barber.name}
-Reference: ${confirmation.reference}
-Total: R ${confirmation.total}`);
-    const ics = `BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Crown and Blade//EN\r\nCALSCALE:GREGORIAN\r\nBEGIN:VEVENT\r\nUID:${confirmation.reference}@crownandblade\r\nDTSTAMP:${stamp}\r\nDTSTART;TZID=Africa/Johannesburg:${start.replace('T', 'T')}\r\nDTEND;TZID=Africa/Johannesburg:${end.replace('T', 'T')}\r\nSUMMARY:${escapeIcs(`${confirmation.service.name} at CROWN & BLADE`)}\r\nDESCRIPTION:${description}\r\nLOCATION:${escapeIcs(confirmation.location)}\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n`;
+    const ics = buildAppleCalendarIcs(confirmation);
     const url = URL.createObjectURL(new Blob([ics], { type: 'text/calendar' }));
     const anchor = document.createElement('a'); anchor.href = url; anchor.download = `crown-blade-${confirmation.reference}.ics`; anchor.click(); URL.revokeObjectURL(url);
   };
-  const googleCalendar = confirmation ? `https://calendar.google.com/calendar/render?action=TEMPLATE&ctz=Africa%2FJohannesburg&text=${encodeURIComponent(`${confirmation.service.name} at CROWN & BLADE`)}&dates=${confirmation.date.replaceAll('-', '')}T${confirmation.time.replace(':', '')}00/${confirmation.date.replaceAll('-', '')}T${confirmation.endTime.replace(':', '')}00&details=${encodeURIComponent(`Appointment for ${confirmation.customerName}. Barber: ${confirmation.barber.name}. Reference ${confirmation.reference}. Total: R ${confirmation.total}.`)}&location=${encodeURIComponent(confirmation.location)}` : '#';
+  const googleCalendar = confirmation ? buildGoogleCalendarUrl(confirmation) : '#';
   return <><Meta title="Book a chair" description="Choose your service, barber and time at CROWN & BLADE." /><main><PageHero eyebrow="Reserve your chair" title={<>Take your<br /><em>time.</em></>}><p className="body-large muted">A few details, then you’re in. Your choices stay with you as you move through the booking.</p></PageHero><section className="page-section container" style={{ paddingTop: 55 }}><div className="booking-layout"><aside className="steps" aria-label="Booking progress">{['Service & barber', 'Date & time', 'Your details', 'Review'].map((label, i) => <div className={`step ${step === i + 1 ? 'active' : ''} ${step > i + 1 ? 'done' : ''}`} key={label}><span>{step > i + 1 ? <Check size={13} /> : i + 1}</span>{label}</div>)}</aside><div className="booking-card">
      {step < 5 && <><h2>{step === 1 ? <>Find your<br /><em>fit.</em></> : step === 2 ? <>Pick a<br /><em>moment.</em></> : step === 3 ? <>A few<br /><em>details.</em></> : <>Check the<br /><em>details.</em></>}</h2>
       {step === 1 && <div className="field-grid"><div className="field full"><label>Service</label><div className="option-grid">{services.map((service) => <button type="button" className={`option ${service.id === serviceId ? 'selected' : ''}`} onClick={() => setServiceId(service.id)} key={service.id} data-testid={`button-booking-service-${service.id}`}><strong>{service.name}</strong><small>{money(service.price)} · {service.durationMinutes} min</small></button>)}</div></div><div className="field full"><label>Barber</label><div className="option-grid">{barbers.map((barber) => <button type="button" className={`option ${barber.id === barberId ? 'selected' : ''}`} onClick={() => setBarberId(barber.id)} key={barber.id} data-testid={`button-booking-barber-${barber.id}`}><strong>{barber.name}</strong><small>{barber.specialty}</small></button>)}</div></div><div className="field"><label htmlFor="booking-date">Date</label><input id="booking-date" type="date" min={new Date().toISOString().slice(0, 10)} value={date} onChange={(event) => { setDate(event.target.value); setTime(''); }} data-testid="input-booking-date" /></div></div>}
