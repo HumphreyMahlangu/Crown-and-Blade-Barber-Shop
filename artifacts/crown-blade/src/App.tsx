@@ -18,6 +18,8 @@ const queryClient = new QueryClient();
 type Service = { id: number; name: string; slug: string; description: string; price: number; durationMinutes: number };
 type Barber = { id: number; name: string; specialty: string; bio: string; imageUrl: string };
 type Confirmation = { reference: string; service: Service; barber: Barber; customerName: string; customerEmail: string; customerPhone: string; date: string; time: string; endTime: string; durationMinutes: number; location: string; subtotal: number; discount: number; total: number; promotionCode: string | null };
+type BookingField = 'name' | 'email' | 'phone';
+type BookingFieldErrors = Partial<Record<BookingField, string>>;
 
 const stockBarbers: Barber[] = [
   { id: 1, name: 'Mandla Ndlovu', specialty: 'Fades & texture', bio: 'Mandla works in clean lines and soft transitions, bringing a measured eye to every fade.', imageUrl: 'https://images.unsplash.com/photo-1621605815971-fbc98d665033?auto=format&fit=crop&w=900&q=85' },
@@ -32,6 +34,37 @@ const stockServices: Service[] = [
   { id: 5, name: 'Kids’ Cut', slug: 'kids-cut', description: 'A patient, tidy cut for younger guests, finished at their pace.', price: 140, durationMinutes: 30 },
   { id: 6, name: 'Signature Grooming', slug: 'signature-grooming', description: 'Our complete ritual: cut, beard, hot towel and a quiet moment to reset.', price: 350, durationMinutes: 75 },
 ];
+
+function normalisePhone(value: string) {
+  return value.replace(/[\s()-]/g, '');
+}
+
+function validatePhone(value: string) {
+  const normalised = normalisePhone(value);
+  return /^(?:0[1-9]\d{8}|\+27[1-9]\d{8})$/.test(normalised)
+    ? ''
+    : 'Use a valid South African number, for example 082 123 4567 or +27 82 123 4567.';
+}
+
+function validateBookingDetails(name: string, email: string, phone: string): BookingFieldErrors {
+  const errors: BookingFieldErrors = {};
+  if (name.trim().length < 2) errors.name = 'Enter your name.';
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) errors.email = 'Enter a valid email address.';
+  const phoneError = validatePhone(phone);
+  if (phoneError) errors.phone = phoneError;
+  return errors;
+}
+
+function timeFromMinutes(timeValue: string, durationMinutes: number) {
+  const [hours, minutes] = timeValue.split(':').map(Number);
+  const total = hours * 60 + minutes + durationMinutes;
+  return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+}
+
+function apiErrorMessage(error: unknown, fallback: string) {
+  const data = (error as { data?: { error?: unknown } } | null)?.data;
+  return typeof data?.error === 'string' ? data.error : fallback;
+}
 
 function Meta({ title, description }: { title: string; description: string }) {
   useEffect(() => {
@@ -55,7 +88,9 @@ function Header({ onOffer }: { onOffer: () => void }) {
 }
 
 function Footer() {
-  return <footer className="site-footer"><div className="container"><div className="footer-top"><div><div className="footer-mark">Good hair days<br /><em>start here.</em></div><p className="muted" style={{ maxWidth: 300, marginTop: 28 }}>A neighbourhood barber shop for considered cuts, close shaves and the people of Cape Town.</p></div><div className="footer-links"><div><div className="mono" style={{ color: 'hsl(var(--accent))', marginBottom: 20 }}>Explore</div><Link href="/services">Services</Link><Link href="/about">Our story</Link><Link href="/booking">Book a chair</Link></div><div><div className="mono" style={{ color: 'hsl(var(--accent))', marginBottom: 20 }}>Find us</div><span style={{ display: 'block', color: 'hsl(var(--primary-foreground) / .7)', fontSize: '.72rem', lineHeight: 1.7 }}>17 Bree Street<br />Cape Town, 8001<br />Mon–Fri · 09:00–18:00<br />Sat · 08:00–16:00<br />Sun · Closed</span></div></div></div><div className="footer-bottom"><span>© {new Date().getFullYear()} CROWN & BLADE</span><span>Fictional business built for practical assessment</span><span><Link href="/terms">Terms</Link> &nbsp;·&nbsp; <Link href="/privacy">Privacy</Link></span></div></div></footer>;
+  const shareUrl = typeof window === 'undefined' ? '' : window.location.href;
+  const shareText = 'CROWN & BLADE — considered cuts and close shaves in Cape Town.';
+  return <footer className="site-footer"><div className="container"><div className="footer-top"><div><div className="footer-mark">Good hair days<br /><em>start here.</em></div><p className="muted" style={{ maxWidth: 300, marginTop: 28 }}>A neighbourhood barber shop for considered cuts, close shaves and the people of Cape Town.</p></div><div className="footer-links"><div><div className="mono" style={{ color: 'hsl(var(--accent))', marginBottom: 20 }}>Explore</div><Link href="/services">Services</Link><Link href="/about">Our story</Link><Link href="/contact">Contact</Link><Link href="/booking">Book a chair</Link></div><div><div className="mono" style={{ color: 'hsl(var(--accent))', marginBottom: 20 }}>Find us</div><span style={{ display: 'block', color: 'hsl(var(--primary-foreground) / .7)', fontSize: '.72rem', lineHeight: 1.7 }}>17 Bree Street<br />Cape Town, 8001<br />Mon–Fri · 09:00–18:00<br />Sat · 08:00–16:00<br />Sun · Closed</span></div><div><div className="mono" style={{ color: 'hsl(var(--accent))', marginBottom: 20 }}>Share this site</div><a href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`} target="_blank" rel="noreferrer" data-testid="link-share-facebook">Share on Facebook</a><a href={`https://wa.me/?text=${encodeURIComponent(`${shareText} ${shareUrl}`)}`} target="_blank" rel="noreferrer" data-testid="link-share-whatsapp">Share on WhatsApp</a></div></div></div><div className="footer-bottom"><span>© {new Date().getFullYear()} CROWN & BLADE</span><span>Fictional business built for practical assessment</span><span><Link href="/terms">Terms</Link> &nbsp;·&nbsp; <Link href="/privacy">Privacy</Link></span></div></div></footer>;
 }
 
 function Shell({ children }: { children: ReactNode }) {
@@ -71,13 +106,13 @@ function Shell({ children }: { children: ReactNode }) {
     if (!offer) return undefined;
     closeButtonRef.current?.focus();
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setOffer(false);
+      if (event.key === 'Escape') dismiss();
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [offer]);
   const dismiss = () => { sessionStorage.setItem('cb-offer-seen', '1'); setOffer(false); };
-  return <div className="site-shell"><Header onOffer={() => setOffer(true)} />{children}<Footer />{offer && <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="offer-title"><div className="offer-modal"><button ref={closeButtonRef} className="close" onClick={dismiss} aria-label="Close offer" data-testid="button-close-offer">×</button><div className="eyebrow">A little welcome</div><h2 id="offer-title">Your first cut,<br /><em>on us.</em></h2><p className="body-large">Take 10% off your first visit. Use this code when you book your chair.</p><p className="offer-code">FIRSTCUT10</p><div style={{ marginTop: 28 }}><Link href="/booking" className="btn btn-dark" onClick={dismiss} data-testid="link-offer-book">Book with FIRSTCUT10 <ArrowRight size={14} /></Link></div></div></div>}</div>;
+  return <div className="site-shell"><Header onOffer={() => setOffer(true)} />{children}<Footer />{offer && <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="offer-title"><div className="offer-modal"><button ref={closeButtonRef} className="close" onClick={dismiss} aria-label="Close offer" data-testid="button-close-offer">×</button><div className="eyebrow">A little welcome</div><h2 id="offer-title">Your first cut,<br /><em>10% off.</em></h2><p className="body-large">Save 10% on your first visit when you book with code FIRSTCUT10.</p><p className="offer-code">FIRSTCUT10 · 10% OFF</p><div style={{ marginTop: 28 }}><Link href="/booking" className="btn btn-dark" onClick={dismiss} data-testid="link-offer-book">Book with FIRSTCUT10 <ArrowRight size={14} /></Link></div></div></div>}</div>;
 }
 
 function Home() {
@@ -128,6 +163,7 @@ function Booking() {
   const [promoMessage, setPromoMessage] = useState('');
   const [promoPercent, setPromoPercent] = useState(0);
   const [formError, setFormError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<BookingFieldErrors>({});
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
   const promotion = useValidatePromotion();
   const booking = useCreateBooking();
@@ -141,13 +177,17 @@ function Booking() {
   const chosenService = services.find((service) => service.id === serviceId) ?? services[0];
   const chosenBarber = barbers.find((barber) => barber.id === barberId) ?? barbers[0];
   const availableTimes = availability.data?.isClosed ? [] : (availability.data?.times ?? []);
-  const discount = chosenService ? chosenService.price * promoPercent / 100 : 0;
+  const discount = chosenService ? Math.round(chosenService.price * promoPercent / 100) : 0;
   const money = (amount: number) => `R ${amount.toFixed(0)}`;
   const goNext = () => {
     setFormError('');
     if (step === 1 && (!serviceId || !barberId || !date)) { setFormError('Choose a service, barber and day to continue.'); return; }
     if (step === 2 && !time) { setFormError('Choose an available time to continue.'); return; }
-    if (step === 3 && (!customerName.trim() || !customerEmail.trim() || !customerPhone.trim())) { setFormError('Please fill in your name, email and phone number.'); return; }
+    if (step === 3) {
+      const errors = validateBookingDetails(customerName, customerEmail, customerPhone);
+      setFieldErrors(errors);
+      if (Object.keys(errors).length > 0) { setFormError('Please correct the highlighted details to continue.'); return; }
+    }
     setStep((current) => Math.min(4, current + 1));
   };
   const validateCode = () => {
@@ -156,8 +196,9 @@ function Booking() {
   };
   const submitBooking = () => {
     if (!chosenService || !chosenBarber) return;
+    if (booking.isPending) return;
     setFormError('');
-    booking.mutate({ data: { serviceId: chosenService.id, barberId: chosenBarber.id, date, time, customerName: customerName.trim(), customerEmail: customerEmail.trim(), customerPhone: customerPhone.trim(), notes: notes.trim() || null, promotionCode: promotionCode.trim() || null } }, { onSuccess: (result) => { setConfirmation(result as Confirmation); setStep(5); }, onError: () => setFormError('That time may have just been taken. Please choose another and try again.') });
+    booking.mutate({ data: { serviceId: chosenService.id, barberId: chosenBarber.id, date, time, customerName: customerName.trim(), customerEmail: customerEmail.trim(), customerPhone: normalisePhone(customerPhone), notes: notes.trim() || null, promotionCode: promotionCode.trim() || null } }, { onSuccess: (result) => { setConfirmation(result as Confirmation); setStep(5); }, onError: (error) => setFormError(apiErrorMessage(error, 'That time may have just been taken. Please choose another and try again.')) });
   };
   const addToAppleCalendar = () => {
     if (!confirmation) return;
@@ -175,11 +216,11 @@ Total: R ${confirmation.total}`);
   };
   const googleCalendar = confirmation ? `https://calendar.google.com/calendar/render?action=TEMPLATE&ctz=Africa%2FJohannesburg&text=${encodeURIComponent(`${confirmation.service.name} at CROWN & BLADE`)}&dates=${confirmation.date.replaceAll('-', '')}T${confirmation.time.replace(':', '')}00/${confirmation.date.replaceAll('-', '')}T${confirmation.endTime.replace(':', '')}00&details=${encodeURIComponent(`Appointment for ${confirmation.customerName}. Barber: ${confirmation.barber.name}. Reference ${confirmation.reference}. Total: R ${confirmation.total}.`)}&location=${encodeURIComponent(confirmation.location)}` : '#';
   return <><Meta title="Book a chair" description="Choose your service, barber and time at CROWN & BLADE." /><main><PageHero eyebrow="Reserve your chair" title={<>Take your<br /><em>time.</em></>}><p className="body-large muted">A few details, then you’re in. Your choices stay with you as you move through the booking.</p></PageHero><section className="page-section container" style={{ paddingTop: 55 }}><div className="booking-layout"><aside className="steps" aria-label="Booking progress">{['Service & barber', 'Date & time', 'Your details', 'Review'].map((label, i) => <div className={`step ${step === i + 1 ? 'active' : ''} ${step > i + 1 ? 'done' : ''}`} key={label}><span>{step > i + 1 ? <Check size={13} /> : i + 1}</span>{label}</div>)}</aside><div className="booking-card">
-    {step < 5 && <><h2>{step === 1 ? <>Find your<br /><em>fit.</em></> : step === 2 ? <>Pick a<br /><em>moment.</em></> : step === 3 ? <>A few<br /><em>details.</em></> : <>Check the<br /><em>details.</em></>}</h2>
+     {step < 5 && <><h2>{step === 1 ? <>Find your<br /><em>fit.</em></> : step === 2 ? <>Pick a<br /><em>moment.</em></> : step === 3 ? <>A few<br /><em>details.</em></> : <>Check the<br /><em>details.</em></>}</h2>
       {step === 1 && <div className="field-grid"><div className="field full"><label>Service</label><div className="option-grid">{services.map((service) => <button type="button" className={`option ${service.id === serviceId ? 'selected' : ''}`} onClick={() => setServiceId(service.id)} key={service.id} data-testid={`button-booking-service-${service.id}`}><strong>{service.name}</strong><small>{money(service.price)} · {service.durationMinutes} min</small></button>)}</div></div><div className="field full"><label>Barber</label><div className="option-grid">{barbers.map((barber) => <button type="button" className={`option ${barber.id === barberId ? 'selected' : ''}`} onClick={() => setBarberId(barber.id)} key={barber.id} data-testid={`button-booking-barber-${barber.id}`}><strong>{barber.name}</strong><small>{barber.specialty}</small></button>)}</div></div><div className="field"><label htmlFor="booking-date">Date</label><input id="booking-date" type="date" min={new Date().toISOString().slice(0, 10)} value={date} onChange={(event) => { setDate(event.target.value); setTime(''); }} data-testid="input-booking-date" /></div></div>}
       {step === 2 && <><div className="notice"><CalendarDays size={15} style={{ verticalAlign: 'middle', marginRight: 8 }} />{chosenService?.name} with {chosenBarber?.name} on {new Date(`${date}T12:00:00`).toLocaleDateString('en-ZA', { weekday: 'long', day: 'numeric', month: 'long' })}</div>{availability.isLoading ? <div className="loading-block"><div className="skeleton" style={{ width: '70%' }} /></div> : availability.isError ? <div className="notice">We couldn’t check the chairs. Try another date.</div> : availableTimes.length === 0 ? <div className="notice">The shop is closed or fully booked on this day. Go back and choose another.</div> : <div className="time-grid">{availableTimes.map((slot) => <button type="button" className={`option ${slot === time ? 'selected' : ''}`} onClick={() => setTime(slot)} key={slot} data-testid={`button-time-${slot}`}><strong>{slot}</strong></button>)}</div>}</>}
-      {step === 3 && <div className="field-grid"><div className="field full"><label htmlFor="booking-name">Full name</label><input id="booking-name" value={customerName} onChange={(event) => setCustomerName(event.target.value)} autoComplete="name" data-testid="input-booking-name" /></div><div className="field"><label htmlFor="booking-email">Email</label><input id="booking-email" type="email" value={customerEmail} onChange={(event) => setCustomerEmail(event.target.value)} autoComplete="email" data-testid="input-booking-email" /></div><div className="field"><label htmlFor="booking-phone">Phone</label><input id="booking-phone" type="tel" value={customerPhone} onChange={(event) => setCustomerPhone(event.target.value)} autoComplete="tel" data-testid="input-booking-phone" /></div><div className="field full"><label htmlFor="booking-notes">Anything we should know? <span className="muted">(optional)</span></label><textarea id="booking-notes" value={notes} onChange={(event) => setNotes(event.target.value)} data-testid="input-booking-notes" /></div></div>}
-      {step === 4 && <><div className="notice"><strong>{chosenService?.name}</strong><br />{chosenBarber?.name} · {new Date(`${date}T12:00:00`).toLocaleDateString('en-ZA', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })} at {time}</div><div className="field" style={{ maxWidth: 410 }}><label htmlFor="promotion-code">Promotion code</label><div style={{ display: 'flex', gap: 8 }}><input id="promotion-code" value={promotionCode} onChange={(event) => setPromotionCode(event.target.value.toUpperCase())} placeholder="FIRSTCUT10" data-testid="input-promotion-code" /><button className="btn btn-line" type="button" onClick={validateCode} disabled={promotion.isPending} data-testid="button-validate-promotion">{promotion.isPending ? 'Checking…' : 'Apply'}</button></div>{promoMessage && <span className={promoPercent ? '' : 'error-note'} style={promoPercent ? { color: 'hsl(var(--accent))', fontSize: '.76rem' } : undefined}>{promoMessage}</span>}</div><div className="summary"><div className="summary-line"><span>{chosenService?.name}</span><span>{money(chosenService?.price ?? 0)}</span></div>{promoPercent > 0 && <div className="summary-line" style={{ color: 'hsl(var(--accent))' }}><span>First visit · {promoPercent}%</span><span>− {money(discount)}</span></div>}<div className="summary-line total"><span>Total</span><span>{money((chosenService?.price ?? 0) - discount)}</span></div></div></>}
+       {step === 3 && <div className="field-grid"><div className="field full"><label htmlFor="booking-name">Full name</label><input id="booking-name" value={customerName} onChange={(event) => { setCustomerName(event.target.value); setFieldErrors((current) => ({ ...current, name: undefined })); }} aria-invalid={Boolean(fieldErrors.name)} aria-describedby={fieldErrors.name ? 'booking-name-error' : undefined} autoComplete="name" data-testid="input-booking-name" />{fieldErrors.name && <span className="field-error" id="booking-name-error" role="alert">{fieldErrors.name}</span>}</div><div className="field"><label htmlFor="booking-email">Email</label><input id="booking-email" type="email" value={customerEmail} onChange={(event) => { setCustomerEmail(event.target.value); setFieldErrors((current) => ({ ...current, email: undefined })); }} aria-invalid={Boolean(fieldErrors.email)} aria-describedby={fieldErrors.email ? 'booking-email-error' : undefined} autoComplete="email" data-testid="input-booking-email" />{fieldErrors.email && <span className="field-error" id="booking-email-error" role="alert">{fieldErrors.email}</span>}</div><div className="field"><label htmlFor="booking-phone">Phone</label><input id="booking-phone" type="tel" value={customerPhone} onChange={(event) => { setCustomerPhone(event.target.value); setFieldErrors((current) => ({ ...current, phone: undefined })); }} aria-invalid={Boolean(fieldErrors.phone)} aria-describedby={fieldErrors.phone ? 'booking-phone-error' : undefined} autoComplete="tel" placeholder="082 123 4567" data-testid="input-booking-phone" />{fieldErrors.phone && <span className="field-error" id="booking-phone-error" role="alert">{fieldErrors.phone}</span>}</div><div className="field full"><label htmlFor="booking-notes">Anything we should know? <span className="muted">(optional)</span></label><textarea id="booking-notes" value={notes} onChange={(event) => setNotes(event.target.value)} data-testid="input-booking-notes" /></div></div>}
+       {step === 4 && <><div className="review-details"><div className="review-section"><div className="mono review-label">Your details</div><div className="review-line"><span>Name</span><strong>{customerName}</strong></div><div className="review-line"><span>Email</span><strong>{customerEmail}</strong></div><div className="review-line"><span>Phone</span><strong>{normalisePhone(customerPhone)}</strong></div>{notes.trim() && <div className="review-line review-notes"><span>Notes</span><strong>{notes.trim()}</strong></div>}</div><div className="review-section"><div className="mono review-label">Appointment</div><div className="review-line"><span>Service</span><strong>{chosenService?.name} · {chosenService?.durationMinutes} min</strong></div><div className="review-line"><span>Barber</span><strong>{chosenBarber?.name}</strong></div><div className="review-line"><span>When</span><strong>{new Date(`${date}T12:00:00`).toLocaleDateString('en-ZA', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })} · {time}–{chosenService ? timeFromMinutes(time, chosenService.durationMinutes) : time}</strong></div><div className="review-line"><span>Timezone</span><strong>South African Standard Time (SAST)</strong></div></div></div><div className="field" style={{ maxWidth: 410 }}><label htmlFor="promotion-code">Promotion code</label><div style={{ display: 'flex', gap: 8 }}><input id="promotion-code" value={promotionCode} onChange={(event) => setPromotionCode(event.target.value.toUpperCase())} placeholder="FIRSTCUT10" data-testid="input-promotion-code" /><button className="btn btn-line" type="button" onClick={validateCode} disabled={promotion.isPending} data-testid="button-validate-promotion">{promotion.isPending ? 'Checking…' : 'Apply'}</button></div>{promoMessage && <span className={promoPercent ? '' : 'error-note'} style={promoPercent ? { color: 'hsl(var(--accent))', fontSize: '.76rem' } : undefined}>{promoMessage}</span>}</div><div className="summary"><div className="summary-line"><span>Original price</span><span>{money(chosenService?.price ?? 0)}</span></div>{promoPercent > 0 && <div className="summary-line" style={{ color: 'hsl(var(--accent))' }}><span>First visit · {promoPercent}% off</span><span>− {money(discount)}</span></div>}<div className="summary-line total"><span>Final total</span><span>{money((chosenService?.price ?? 0) - discount)}</span></div></div></>}
       {formError && <p className="error-note" role="alert">{formError}</p>}
       <div className="form-actions">{step > 1 && <button className="btn btn-line" type="button" onClick={() => setStep((current) => current - 1)} data-testid="button-booking-back"><ChevronLeft size={14} /> Back</button>}<span />{step < 4 && <button className="btn btn-dark" type="button" onClick={goNext} data-testid="button-booking-next">Continue <ChevronRight size={14} /></button>}{step === 4 && <button className="btn btn-bronze" type="button" onClick={submitBooking} disabled={booking.isPending} data-testid="button-confirm-booking">{booking.isPending ? 'Reserving…' : 'Reserve chair'} <Check size={14} /></button>}</div>
     </>}

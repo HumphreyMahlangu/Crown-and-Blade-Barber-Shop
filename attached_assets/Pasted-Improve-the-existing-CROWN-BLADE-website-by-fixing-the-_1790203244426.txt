@@ -1,0 +1,115 @@
+Improve the existing CROWN & BLADE website by fixing the issues below. Preserve its current branding, typography, colours, photography, page layouts, and working functionality. Make targeted changes rather than rebuilding the website.
+
+1. CORRECT THE PROMOTION COPY
+
+Replace “Your first cut, on us” with “Your first cut, 10% off.”
+
+Keep the offer consistent everywhere:
+- Code: FIRSTCUT10.
+- Discount: 10%.
+- Clearly communicate the first-visit condition.
+- Ensure the displayed discount matches the amount validated and saved by the backend.
+
+2. FIX POPUP DISMISSAL
+
+The offer popup reappeared on the Services page after being dismissed with Escape.
+
+Make the close button and Escape key use the same dismissal behaviour:
+- Remember dismissal for the current browser session using sessionStorage.
+- Do not automatically reopen the popup on navigation or refresh during that session.
+- Keep the “First visit?” button available to reopen it intentionally.
+- Do not automatically interrupt an active booking.
+- Maintain accessible focus handling, keyboard navigation, and an obvious close button.
+
+3. COMPLETE THE FOOTER
+
+Add a clearly labelled Contact link pointing to /contact.
+
+The assessment also requests social links:
+- Reuse legitimate social destinations if any have been configured.
+- Do not invent profile URLs or link to unrelated businesses.
+- If no profiles exist, implement working, clearly labelled “Share on Facebook” and “Share on WhatsApp” actions using the public website URL. Do not present these as the shop’s own profiles.
+- Tell me in the final report if actual business-profile URLs are still needed to satisfy the brief literally.
+
+Preserve existing booking, services, story, opening hours, address, Terms, Privacy, and copyright information.
+
+4. IMPROVE THE FINAL BOOKING REVIEW
+
+Before “Reserve Chair”, show:
+- Customer name.
+- Email address.
+- Phone number.
+- Selected service and barber.
+- Full appointment date.
+- Start time and calculated end time.
+- Service duration.
+- Explicit timezone label: South African Standard Time (SAST).
+- Optional notes, if entered.
+- Original price, applied discount, and final total.
+
+Allow customers to return to previous steps without losing their information.
+
+5. STRENGTHEN VALIDATION
+
+The customer-details step accepted 0000000000 as a phone number.
+
+Validate customer details on both the frontend and backend:
+- Reject empty or whitespace-only names.
+- Validate email format.
+- Accept normal South African phone formatting, including local numbers and +27 numbers.
+- Normalise spaces, hyphens, and parentheses before validating.
+- Reject clearly invalid phone numbers such as all-zero values and numbers with impossible lengths.
+- Do not claim that format validation proves a number exists.
+- Display helpful errors beside the affected fields.
+- Preserve entered data when an error occurs.
+
+6. VERIFY BOOKING AND CALENDAR FUNCTIONALITY
+
+These features have not yet been verified end to end. Inspect the existing implementation first, then fix any problems found.
+
+Using clearly labelled synthetic test data in the development/test environment, verify:
+- A successful booking is saved in the database.
+- Success is displayed only after the save succeeds.
+- Refreshing does not create a duplicate booking.
+- Repeated clicks do not create duplicate appointments.
+- The backend prevents overlapping appointments for the same barber, including simultaneous attempts to reserve a slot.
+- Past times, Sundays, and appointments extending beyond closing time are rejected.
+- Booking failures produce useful messages.
+- Customer information is not publicly readable through availability or booking endpoints.
+
+On confirmation, verify that both calendar actions use the saved appointment:
+- Add to Google Calendar.
+- Download an Apple Calendar-compatible .ics file.
+
+Both must contain the correct shop name, service, barber, date, start time, end time, location, and booking reference.
+
+Use a test appointment at 15:00 SAST and confirm that its time is encoded correctly in both exports. For a 45-minute service, it must end at 15:45 SAST.
+
+Check that two different appointments produce different calendar details. Validate the .ics formatting, UID, timestamps, and text escaping.
+
+Do not require Google OAuth just to open an event-creation link. Do not claim an event has been saved to the customer’s calendar merely because a link opened or a file downloaded.
+
+If full verification would require creating records in the public production database, report that limitation instead of silently creating test bookings there.
+
+7. REGRESSION CHECKS
+
+After the fixes, test:
+- Popup dismissal using both Escape and the close button, followed by navigation and refresh.
+- Manual reopening through “First visit?”.
+- Footer links and sharing actions.
+- Invalid and valid customer input.
+- Booking review accuracy and back navigation.
+- FIRSTCUT10: R220 must become R198.
+- Mobile navigation and booking layouts.
+- No horizontal overflow or broken images.
+- No new console errors.
+
+Keep changes focused and leave the updated project ready to republish.
+
+Finish with a short report covering:
+- What changed.
+- What was actually tested.
+- Any remaining issues or setup.
+- Whether republishing is required.
+
+Do not describe anything as verified unless you actually checked it.

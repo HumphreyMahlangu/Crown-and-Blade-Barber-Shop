@@ -89,6 +89,24 @@ function isPromotionValid(code: string | null | undefined): boolean {
   return code?.trim().toUpperCase() === PROMOTION_CODE;
 }
 
+function normalisePhone(value: string): string {
+  return value.replace(/[\s()-]/g, "");
+}
+
+function isValidSouthAfricanPhone(value: string): boolean {
+  const normalised = normalisePhone(value);
+  return /^(?:0[1-9]\d{8}|\+27[1-9]\d{8})$/.test(normalised);
+}
+
+function normaliseBookingBody(body: unknown): unknown {
+  if (!body || typeof body !== "object") return body;
+  const candidate = { ...(body as Record<string, unknown>) };
+  for (const key of ["customerName", "customerEmail", "customerPhone"]) {
+    if (typeof candidate[key] === "string") candidate[key] = candidate[key].trim();
+  }
+  return candidate;
+}
+
 function toPublicService(service: typeof servicesTable.$inferSelect) {
   return {
     id: service.id,
@@ -221,12 +239,17 @@ router.post("/promotions/validate", async (req, res): Promise<void> => {
 });
 
 router.post("/bookings", async (req, res): Promise<void> => {
-  const parsed = CreateBookingBody.safeParse(req.body);
+  const parsed = CreateBookingBody.safeParse(normaliseBookingBody(req.body));
   if (!parsed.success) {
     res.status(400).json({ error: "Please check your booking details and try again." });
     return;
   }
   const input = parsed.data;
+  if (!isValidSouthAfricanPhone(input.customerPhone)) {
+    res.status(400).json({ error: "Enter a valid South African phone number, for example 082 123 4567 or +27 82 123 4567." });
+    return;
+  }
+  const normalizedPhone = normalisePhone(input.customerPhone);
   const [service, barber] = await Promise.all([
     db.select().from(servicesTable).where(and(eq(servicesTable.id, input.serviceId), eq(servicesTable.active, 1))),
     db.select().from(barbersTable).where(and(eq(barbersTable.id, input.barberId), eq(barbersTable.active, 1))),
@@ -285,7 +308,7 @@ router.post("/bookings", async (req, res): Promise<void> => {
         endTime,
         customerName: input.customerName.trim(),
         customerEmail: input.customerEmail.trim().toLowerCase(),
-        customerPhone: input.customerPhone.trim(),
+        customerPhone: normalizedPhone,
         notes: input.notes?.trim() || null,
         promotionCode: discount > 0 ? PROMOTION_CODE : null,
         subtotal: service[0].price,
@@ -300,7 +323,7 @@ router.post("/bookings", async (req, res): Promise<void> => {
         barber: toPublicBarber(barber[0]),
         customerName: input.customerName.trim(),
         customerEmail: input.customerEmail.trim().toLowerCase(),
-        customerPhone: input.customerPhone.trim(),
+        customerPhone: normalizedPhone,
         date: input.date,
         time: input.time,
         endTime,
