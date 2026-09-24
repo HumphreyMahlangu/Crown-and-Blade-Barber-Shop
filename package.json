@@ -6,7 +6,7 @@
   "scripts": {
     "preinstall": "node ./scripts/preinstall.mjs",
     "build": "pnpm run typecheck && pnpm -r --if-present run build",
-    "build:vercel": "pnpm --filter @workspace/crown-blade build",
+    "build:vercel": "pnpm --filter @workspace/api-server build && pnpm --filter @workspace/crown-blade build",
     "db:push": "pnpm --filter @workspace/db push",
     "typecheck:libs": "tsc --build",
     "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck"
