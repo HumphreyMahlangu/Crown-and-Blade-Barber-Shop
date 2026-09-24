@@ -1,6 +1,4 @@
-import { sql } from "drizzle-orm";
-import { db } from "@workspace/db";
-import { barbersTable, servicesTable } from "@workspace/db";
+import { barbersTable, db, servicesTable, sql } from "@workspace/db";
 
 const services = [
   {

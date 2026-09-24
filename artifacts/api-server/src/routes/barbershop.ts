@@ -1,6 +1,5 @@
 import { randomBytes } from "node:crypto";
 import { Router, type IRouter } from "express";
-import { and, asc, eq, sql } from "drizzle-orm";
 import {
   CreateBookingBody,
   CreateBookingResponse,
@@ -14,11 +13,15 @@ import {
   ValidatePromotionResponse,
 } from "@workspace/api-zod/server";
 import {
+  and,
+  asc,
   barbersTable,
   bookingsTable,
   contactMessagesTable,
   db,
+  eq,
   servicesTable,
+  sql,
 } from "@workspace/db";
 
 const router: IRouter = Router();

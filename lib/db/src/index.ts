@@ -1,4 +1,5 @@
 import { drizzle } from "drizzle-orm/node-postgres";
+export { and, asc, eq, sql } from "drizzle-orm";
 import pg from "pg";
 import { attachDatabasePool } from "@vercel/functions";
 import * as schema from "./schema/index.js";
