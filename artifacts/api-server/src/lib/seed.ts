@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import { db } from "@workspace/db";
 import { barbersTable, servicesTable } from "@workspace/db";
 
@@ -71,13 +72,36 @@ const barbers = [
 ];
 
 export async function seedCatalogue(): Promise<void> {
-  const existingServices = await db.select({ id: servicesTable.id }).from(servicesTable).limit(1);
-  if (existingServices.length === 0) {
-    await db.insert(servicesTable).values(services);
-  }
+  await db.transaction(async (tx) => {
+    await tx.execute(
+      sql`select pg_advisory_xact_lock(hashtext('crown-blade-catalogue-seed'))`,
+    );
 
-  const existingBarbers = await db.select({ id: barbersTable.id }).from(barbersTable).limit(1);
-  if (existingBarbers.length === 0) {
-    await db.insert(barbersTable).values(barbers);
-  }
+    const existingServices = await tx
+      .select({ id: servicesTable.id })
+      .from(servicesTable)
+      .limit(1);
+    if (existingServices.length === 0) {
+      await tx.insert(servicesTable).values(services);
+    }
+
+    const existingBarbers = await tx
+      .select({ id: barbersTable.id })
+      .from(barbersTable)
+      .limit(1);
+    if (existingBarbers.length === 0) {
+      await tx.insert(barbersTable).values(barbers);
+    }
+  });
+}
+
+let catalogueReady: Promise<void> | undefined;
+
+export function ensureCatalogueSeeded(): Promise<void> {
+  catalogueReady ??= seedCatalogue().catch((error: unknown) => {
+    catalogueReady = undefined;
+    throw error;
+  });
+
+  return catalogueReady;
 }

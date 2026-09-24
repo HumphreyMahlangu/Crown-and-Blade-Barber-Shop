@@ -3,11 +3,17 @@
   "version": "0.0.0",
   "license": "MIT",
   "scripts": {
-    "preinstall": "sh -c 'rm -f package-lock.json yarn.lock; case \"$npm_config_user_agent\" in pnpm/*) ;; *) echo \"Use pnpm instead\" >&2; exit 1 ;; esac'",
+    "preinstall": "node ./scripts/preinstall.mjs",
     "build": "pnpm run typecheck && pnpm -r --if-present run build",
+    "build:vercel": "pnpm --filter @workspace/crown-blade build",
+    "db:push": "pnpm --filter @workspace/db push",
     "typecheck:libs": "tsc --build",
     "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck"
   },
+  "engines": {
+    "node": "24.x"
+  },
+  "packageManager": "pnpm@10.17.1",
   "private": true,
   "dependencies": {
     "@replit/connectors-sdk": "^0.4.3"
