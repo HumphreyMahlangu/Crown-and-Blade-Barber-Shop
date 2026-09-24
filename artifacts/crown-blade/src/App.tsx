@@ -1,8 +1,6 @@
 import { type FormEvent, type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ErrorBoundary } from '@/components/error-boundary';
-import { Toaster } from '@/components/ui/toaster';
-import { TooltipProvider } from '@/components/ui/tooltip';
 import { useCreateBooking, useGetAvailability, useListBarbers, useListServices, useSubmitContact, useValidatePromotion, getGetAvailabilityQueryKey } from '@workspace/api-client-react';
 import { ArrowRight, CalendarDays, Check, ChevronLeft, ChevronRight, Clock3, Menu, X } from 'lucide-react';
 import { buildAppleCalendarIcs, buildGoogleCalendarUrl } from '@/calendar';
@@ -291,12 +289,9 @@ function RoutedErrorBoundary({ children }: { children: ReactNode }) {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
-          <Router />
-        </WouterRouter>
-        <Toaster />
-      </TooltipProvider>
+      <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
+        <Router />
+      </WouterRouter>
     </QueryClientProvider>
   );
 }
