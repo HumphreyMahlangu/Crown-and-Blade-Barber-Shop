@@ -2,7 +2,6 @@ import { randomBytes } from "node:crypto";
 import { Router, type IRouter } from "express";
 import { and, asc, eq, sql } from "drizzle-orm";
 import {
-  Availability,
   CreateBookingBody,
   CreateBookingResponse,
   GetAvailabilityQueryParams,
@@ -13,7 +12,7 @@ import {
   SubmitContactResponse,
   ValidatePromotionBody,
   ValidatePromotionResponse,
-} from "@workspace/api-zod";
+} from "@workspace/api-zod/server";
 import {
   barbersTable,
   bookingsTable,

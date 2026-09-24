@@ -1,6 +1,6 @@
-import app from "./app";
-import { logger } from "./lib/logger";
-import { ensureCatalogueSeeded } from "./lib/seed";
+import app from "./app.js";
+import { logger } from "./lib/logger.js";
+import { ensureCatalogueSeeded } from "./lib/seed.js";
 
 const rawPort = process.env["PORT"];
 
