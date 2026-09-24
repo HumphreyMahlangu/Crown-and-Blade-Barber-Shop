@@ -1,16 +1,11 @@
-import express, {
-  type Express,
-  type NextFunction,
-  type Request,
-  type Response,
-} from "express";
+import express from "express";
 import cors from "cors";
 import { pinoHttp } from "pino-http";
 import router from "./routes/index.js";
 import { logger } from "./lib/logger.js";
 import { ensureCatalogueSeeded } from "./lib/seed.js";
 
-const app: Express = express();
+const app = express();
 
 app.use(
   pinoHttp({
@@ -35,7 +30,7 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-app.use(async (_req: Request, _res: Response, next: NextFunction) => {
+app.use(async (_req, _res, next) => {
   try {
     await ensureCatalogueSeeded();
     next();
@@ -46,11 +41,11 @@ app.use(async (_req: Request, _res: Response, next: NextFunction) => {
 
 app.use("/api", router);
 
-app.use(
-  (error: unknown, _req: Request, res: Response, _next: NextFunction) => {
-    logger.error({ err: error }, "Unhandled API error");
-    res.status(500).json({ error: "The service is temporarily unavailable." });
-  },
-);
+const errorHandler: express.ErrorRequestHandler = (error, _req, res, _next) => {
+  logger.error({ err: error }, "Unhandled API error");
+  res.status(500).json({ error: "The service is temporarily unavailable." });
+};
+
+app.use(errorHandler);
 
 export default app;
