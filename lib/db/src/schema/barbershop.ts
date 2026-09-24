@@ -6,8 +6,6 @@ import {
   text,
   timestamp,
 } from "drizzle-orm/pg-core";
-import { createInsertSchema } from "drizzle-zod";
-import { z } from "zod/v4";
 
 export const servicesTable = pgTable("barber_services", {
   id: serial("id").primaryKey(),
@@ -64,28 +62,7 @@ export const contactMessagesTable = pgTable("contact_messages", {
     .defaultNow(),
 });
 
-export const insertServiceSchema = createInsertSchema(servicesTable).omit({
-  id: true,
-});
-export const insertBarberSchema = createInsertSchema(barbersTable).omit({
-  id: true,
-});
-export const insertBookingSchema = createInsertSchema(bookingsTable).omit({
-  id: true,
-  createdAt: true,
-});
-export const insertContactMessageSchema = createInsertSchema(
-  contactMessagesTable,
-).omit({
-  id: true,
-  createdAt: true,
-});
-
 export type Service = typeof servicesTable.$inferSelect;
 export type Barber = typeof barbersTable.$inferSelect;
 export type Booking = typeof bookingsTable.$inferSelect;
 export type ContactMessage = typeof contactMessagesTable.$inferSelect;
-export type InsertService = z.infer<typeof insertServiceSchema>;
-export type InsertBarber = z.infer<typeof insertBarberSchema>;
-export type InsertBooking = z.infer<typeof insertBookingSchema>;
-export type InsertContactMessage = z.infer<typeof insertContactMessageSchema>;

@@ -3,7 +3,8 @@
 This repository deploys as one Vercel project:
 
 - the React/Vite application is served from Vercel's CDN;
-- `api/[...path].ts` exposes the Express API as a Vercel Function;
+- `api/[...path].js` exposes the Express API as a Vercel Function;
+- `api/promotions/validate.js` handles the nested promotion route explicitly;
 - a PostgreSQL database stores services, barbers, bookings, and enquiries.
 
 ## Required Vercel configuration
