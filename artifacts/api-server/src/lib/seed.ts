@@ -51,21 +51,21 @@ const barbers = [
     specialty: "Fades & texture",
     bio: "Mandla works in clean lines and soft transitions, bringing a measured eye to every fade.",
     imageUrl:
-      "https://images.unsplash.com/photo-1621605815971-fbc98d665033?auto=format&fit=crop&w=900&q=85",
+      "https://images.unsplash.com/photo-1653758265969-b048bb0b328a?auto=format&fit=crop&w=900&q=85",
   },
   {
     name: "Lena Jacobs",
     specialty: "Classic cuts & beard work",
     bio: "Lena favours timeless shapes with just enough edge, from a close crop to a sculpted beard.",
     imageUrl:
-      "https://images.unsplash.com/photo-1599351431202-1e0f0137899a?auto=format&fit=crop&w=900&q=85",
+      "https://images.unsplash.com/photo-1643252824297-1670be2a973a?auto=format&fit=crop&w=900&q=85",
   },
   {
     name: "Thabo Maseko",
     specialty: "Modern grooming",
     bio: "Thabo brings calm precision to modern cuts and the small finishing details people notice.",
     imageUrl:
-      "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&w=900&q=85",
+      "https://images.unsplash.com/photo-1703792686667-7486746389a1?auto=format&fit=crop&w=900&q=85",
   },
 ];
 
