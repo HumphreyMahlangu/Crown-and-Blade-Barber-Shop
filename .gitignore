@@ -10,6 +10,7 @@ out-tsc
 
 # dependencies
 node_modules
+.pnpm-store/
 
 # IDEs and editors
 /.idea
@@ -43,10 +44,6 @@ Thumbs.db
 
 .cursor/rules/nx-rules.mdc
 .github/instructions/nx.instructions.md
-
-# Replit
-.cache/
-.local/
 
 # Vercel
 .vercel/

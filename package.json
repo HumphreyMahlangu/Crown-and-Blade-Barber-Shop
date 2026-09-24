@@ -16,9 +16,6 @@
   },
   "packageManager": "pnpm@10.17.1",
   "private": true,
-  "dependencies": {
-    "@replit/connectors-sdk": "^0.4.3"
-  },
   "devDependencies": {
     "prettier": "^3.9.6",
     "typescript": "~5.9.3"
